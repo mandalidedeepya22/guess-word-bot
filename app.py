@@ -11,22 +11,17 @@ load_dotenv()
 
 
 def _apply_streamlit_secrets() -> None:
+  """Copy Streamlit Cloud secrets into os.environ (local .env uses load_dotenv)."""
   try:
-    secrets = st.secrets
-    if "GEMINI_API_KEY" in secrets:
-      os.environ["GEMINI_API_KEY"] = secrets["GEMINI_API_KEY"]
-    if "GEMINI_MODEL" in secrets:
-      os.environ["GEMINI_MODEL"] = secrets["GEMINI_MODEL"]
-  except (FileNotFoundError, AttributeError):
+    if "GEMINI_API_KEY" in st.secrets:
+      os.environ["GEMINI_API_KEY"] = str(st.secrets["GEMINI_API_KEY"]).strip()
+    if "GEMINI_MODEL" in st.secrets:
+      os.environ["GEMINI_MODEL"] = str(st.secrets["GEMINI_MODEL"]).strip()
+  except Exception:
     pass
-
-
-_apply_streamlit_secrets()
 
 from game_engine import GameEngine, Phase  # noqa: E402
 from hint_generator import MAX_HINTS, _client  # noqa: E402
-
-_client.cache_clear()
 
 
 def _init_session() -> None:
@@ -77,6 +72,9 @@ def main() -> None:
     layout="centered",
   )
 
+  _apply_streamlit_secrets()
+  _client.cache_clear()
+
   _init_session()
   engine: GameEngine = st.session_state.engine
 
@@ -84,12 +82,19 @@ def main() -> None:
   st.caption("AI-hosted · dynamic Gemini hints · max 5 per round")
 
   if not os.getenv("GEMINI_API_KEY", "").strip():
-    st.error(
-      "Missing **GEMINI_API_KEY**. "
-      "Add it to `.env` locally, or to Streamlit **Secrets** when deploying."
+    st.error("Missing GEMINI_API_KEY on Streamlit Cloud.")
+    st.markdown(
+      "**Fix (takes ~1 minute):**\n"
+      "1. Open [share.streamlit.io](https://share.streamlit.io) → your app\n"
+      "2. Click **Manage app** (⋮ menu) → **Settings** → **Secrets**\n"
+      "3. Paste the block below — replace with your **real** key from "
+      "[Google AI Studio](https://aistudio.google.com/apikey)\n"
+      "4. Click **Save** (app reboots automatically)\n\n"
+      "Do **not** use `your-key` — use the same key as in your local `.env` file."
     )
     st.code(
-      "GEMINI_API_KEY = \"your-key\"\nGEMINI_MODEL = \"gemini-flash-latest\"",
+      'GEMINI_API_KEY = "AIza...your-real-key"\n'
+      'GEMINI_MODEL = "gemini-flash-latest"',
       language="toml",
     )
     st.stop()
